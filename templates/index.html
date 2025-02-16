@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greek Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 300px;
+            transform: translateX(0);
+            transition: transform 0.3s ease-in-out;
+            z-index: 50;
+        }
+        
+        .sidebar.closed {
+            transform: translateX(-100%);
+        }
+        
+        .main-content {
+            margin-left: 300px;
+            transition: margin-left 0.3s ease-in-out;
+        }
+        
+        .main-content.full-width {
+            margin-left: 0;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                max-width: 300px;
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-group input {
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar bg-white shadow-lg p-4">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">Chat History</h2>
+            <button id="new-chat" class="bg-blue-500 text-white px-3 py-1 rounded">New Chat</button>
+            <button id="close-sidebar" class="bg-red-500 text-white px-3 py-1 rounded">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="session-list" class="space-y-2">
+            {% for session_id in sessions %}
+                <div class="session-item p-2 rounded cursor-pointer {% if session_id == session.active_session %}bg-blue-100{% else %}hover:bg-gray-100{% endif %}" 
+                     data-session="{{ session_id }}">
+                    Chat {{ loop.index }}
+                </div>
+            {% endfor %}
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="main-content" class="main-content min-h-screen p-4">
+        <div class="flex items-center mb-4">
+            <button id="open-sidebar" class="bg-blue-500 text-white p-2 rounded mr-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <h1 class="text-2xl font-bold">NBC BOT</h1>
+            <img src="../static/img/logo.png" alt="" height="50" width="50">
+        </div>
+
+        <div id="chat-box" class="bg-white p-4 rounded shadow mb-4 h-96 overflow-y-auto">
+            {% for chat in chat_history %}
+                <p><strong>You:</strong> {{ chat.user }}</p>
+                <p><strong>Bot:</strong> {{ chat.bot }}</p>
+                <hr class="my-2">
+            {% endfor %}
+        </div>
+
+        <div class="flex space-x-4 mb-6">
+            <input type="text" id="user-input" class="flex-1 p-2 border rounded" placeholder="Type your message...">
+            <button id="send-btn" class="bg-blue-500 text-white px-4 py-2 rounded">Send</button>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-bold mb-4">Settings</h2>
+            <div class="space-y-4">
+                <div class="form-group">
+                    <label for="temperature" class="font-medium">Temperature:</label>
+                    <input type="number" id="temperature" step="0.1" value="{{ settings.temperature }}" 
+                           class="p-2 border rounded">
+                </div>
+                <div class="form-group">
+                    <label for="max-tokens" class="font-medium">Max Tokens:</label>
+                    <input type="number" id="max-tokens" value="{{ settings.max_tokens }}" 
+                           class="p-2 border rounded">
+                </div>
+                <button id="update-settings" class="w-full bg-green-500 text-white py-2 rounded">
+                    Update Settings
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        const openSidebarBtn = document.getElementById('open-sidebar');
+        const closeSidebarBtn = document.getElementById('close-sidebar');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('closed');
+            mainContent.classList.toggle('full-width');
+        }
+
+        openSidebarBtn.addEventListener('click', toggleSidebar);
+        closeSidebarBtn.addEventListener('click', toggleSidebar);
+
+        // New Chat Functionality
+        document.getElementById('new-chat').addEventListener('click', async () => {
+            const response = await fetch('/new_chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            const data = await response.json();
+            window.location.reload();
+        });
+
+        // Switch Sessions
+        document.querySelectorAll('.session-item').forEach(item => {
+            item.addEventListener('click', async () => {
+                const sessionId = item.dataset.session;
+                await fetch('/switch_session', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ session_id: sessionId })
+                });
+                window.location.reload();
+            });
+        });
+
+        // Chat functionality
+        document.getElementById('send-btn').addEventListener('click', async () => {
+            const userInput = document.getElementById('user-input').value;
+            if (!userInput) return;
+
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user_input: userInput })
+            });
+
+            const data = await response.json();
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML += `<p><strong>You:</strong> ${userInput}</p>`;
+            chatBox.innerHTML += `<p><strong>Bot:</strong> ${data.response}</p>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+            document.getElementById('user-input').value = '';
+        });
+
+        // Settings update
+        document.getElementById('update-settings').addEventListener('click', async () => {
+            const temperature = document.getElementById('temperature').value;
+            const maxTokens = document.getElementById('max-tokens').value;
+
+            await fetch('/update_settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ temperature, max_tokens: maxTokens })
+            });
+            alert('Settings updated successfully!');
+        });
+    </script>
+</body>
+</html>
