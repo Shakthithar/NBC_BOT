@@ -71,9 +71,9 @@
         </div>
         <div id="session-list" class="space-y-2">
             {% for session_id in sessions %}
-                <div class="session-item p-2 rounded cursor-pointer {% if session_id == session.active_session %}bg-blue-100{% else %}hover:bg-gray-100{% endif %}" 
+                <div class="session-item p-2 rounded cursor-pointer {% if session_id == active_session %}bg-blue-100{% else %}hover:bg-gray-100{% endif %}" 
                      data-session="{{ session_id }}">
-                    Chat {{ loop.index }}
+                    Chat {{ loop.index + 1}} 
                 </div>
             {% endfor %}
         </div>
@@ -125,7 +125,7 @@
     </main>
 
     <script>
-        const sidebar = document.getElementById('sidebar');
+        const sidebar = document.getElementById('sidebar'); 
         const mainContent = document.getElementById('main-content');
         const openSidebarBtn = document.getElementById('open-sidebar');
         const closeSidebarBtn = document.getElementById('close-sidebar');
