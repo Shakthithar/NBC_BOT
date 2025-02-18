@@ -69,13 +69,7 @@
             </button>
         </div>
         <div id="session-list" class="space-y-2">
-            {% for session_id in sessions %}
-                <div class="session-item flex justify-between items-center p-2 rounded cursor-pointer {% if session_id == session.active_session %}bg-blue-100{% else %}hover:bg-gray-100{% endif %}" 
-                     data-session="{{ session_id }}">
-                    <span>Chat {{ loop.index }}</span>
-                    <button class="delete-session bg-red-500 text-white px-2 py-1 rounded" data-session-id="{{ session_id }}">Delete</button>
-                </div>
-            {% endfor %}
+            <!-- Sessions will be dynamically loaded here -->
         </div>
     </aside>
 
@@ -92,13 +86,7 @@
         </div>
 
         <div id="chat-box" class="bg-white p-4 rounded shadow mb-4 h-96 overflow-y-auto">
-            {% for chat in chat_history %}
-                <div class="chat-message mb-2">
-                    <p><strong>You:</strong> {{ chat.user }}</p>
-                    <p><strong>Bot:</strong> {{ chat.bot }}</p>
-                    <hr class="my-2">
-                </div>
-            {% endfor %}
+            <!-- Chat messages will be dynamically loaded here -->
         </div>
 
         <div class="flex space-x-4 mb-6">
@@ -134,6 +122,8 @@
         const mainContent = document.getElementById('main-content');
         const openSidebarBtn = document.getElementById('open-sidebar');
         const closeSidebarBtn = document.getElementById('close-sidebar');
+        const sessionList = document.getElementById('session-list');
+        const chatBox = document.getElementById('chat-box');
 
         function toggleSidebar() {
             sidebar.classList.toggle('closed');
@@ -143,83 +133,72 @@
         openSidebarBtn.addEventListener('click', toggleSidebar);
         closeSidebarBtn.addEventListener('click', toggleSidebar);
 
+        // Load sessions from local storage
+        function loadSessions() {
+            const sessions = JSON.parse(localStorage.getItem('sessions')) || [];
+            sessionList.innerHTML = '';
+            sessions.forEach((session, index) => {
+                const sessionItem = document.createElement('div');
+                sessionItem.className = `session-item flex justify-between items-center p-2 rounded cursor-pointer ${session.active ? 'bg-blue-100' : 'hover:bg-gray-100'}`;
+                sessionItem.dataset.session = session.id;
+                sessionItem.innerHTML = `
+                    <span>Chat ${index + 1}</span>
+                    <button class="delete-session bg-red-500 text-white px-2 py-1 rounded" data-session-id="${session.id}">Delete</button>
+                `;
+                sessionList.appendChild(sessionItem);
+            });
+        }
+
+        // Save sessions to local storage
+        function saveSessions(sessions) {
+            localStorage.setItem('sessions', JSON.stringify(sessions));
+        }
+
         // New Chat Functionality
-        document.getElementById('new-chat').addEventListener('click', async () => {
-            try {
-                const response = await fetch('/new_chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${API_KEY}`
-                    }
-                });
-                if (response.ok) {
-                    location.reload(); // Reload the page to start fresh
-                } else {
-                    alert('Failed to create a new chat session.');
-                }
-            } catch (error) {
-                console.error('Error creating new chat session:', error);
-                alert('Error creating new chat session.');
-            }
+        document.getElementById('new-chat').addEventListener('click', () => {
+            const sessions = JSON.parse(localStorage.getItem('sessions')) || [];
+            const newSession = { id: Date.now(), active: true, messages: [] };
+            sessions.forEach(session => session.active = false); // Deactivate all sessions
+            sessions.push(newSession);
+            saveSessions(sessions);
+            loadSessions();
+            chatBox.innerHTML = ''; // Clear chat box for new session
         });
 
         // Switch Sessions
-        document.querySelectorAll('.session-item').forEach(item => {
-            item.addEventListener('click', async () => {
-                const sessionId = item.dataset.session;
-                try {
-                    const response = await fetch('/switch_session', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${API_KEY}`
-                        },
-                        body: JSON.stringify({ session_id: sessionId })
-                    });
-                    if (response.ok) {
-                        location.reload(); // Reload the page to switch sessions
-                    } else {
-                        alert('Failed to switch sessions.');
-                    }
-                } catch (error) {
-                    console.error('Error switching sessions:', error);
-                    alert('Error switching sessions.');
-                }
-            });
+        sessionList.addEventListener('click', (event) => {
+            if (event.target.classList.contains('session-item')) {
+                const sessionId = event.target.dataset.session;
+                const sessions = JSON.parse(localStorage.getItem('sessions')) || [];
+                sessions.forEach(session => session.active = session.id === parseInt(sessionId));
+                saveSessions(sessions);
+                loadSessions();
+                const activeSession = sessions.find(session => session.active);
+                chatBox.innerHTML = activeSession.messages.map(message => `
+                    <div class="chat-message mb-2">
+                        <p><strong>You:</strong> ${message.user}</p>
+                        <p><strong>Bot:</strong> ${message.bot}</p>
+                        <hr class="my-2">
+                    </div>
+                `).join('');
+            }
         });
 
         // Delete session functionality
-        document.querySelectorAll('.delete-session').forEach(button => {
-            button.addEventListener('click', async (event) => {
+        sessionList.addEventListener('click', (event) => {
+            if (event.target.classList.contains('delete-session')) {
                 event.preventDefault();
                 event.stopPropagation();
                 
-                const sessionItem = button.closest('.session-item');
-                const sessionId = sessionItem.dataset.session;
-                
-                try {
-                    const response = await fetch('/delete_session', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${API_KEY}`
-                        },
-                        body: JSON.stringify({ session_id: sessionId })
-                    });
-                    if (response.ok) {
-                        sessionItem.remove(); // Remove from DOM
-                        if (sessionItem.classList.contains('bg-blue-100')) {
-                            document.getElementById('chat-box').innerHTML = ''; // Clear chat box if active session deleted
-                        }
-                    } else {
-                        alert('Failed to delete chat session.');
-                    }
-                } catch (error) {
-                    console.error('Error deleting session:', error);
-                    alert('Error deleting chat session.');
+                const sessionId = event.target.dataset.sessionId;
+                let sessions = JSON.parse(localStorage.getItem('sessions')) || [];
+                sessions = sessions.filter(session => session.id !== parseInt(sessionId));
+                saveSessions(sessions);
+                loadSessions();
+                if (event.target.closest('.session-item').classList.contains('bg-blue-100')) {
+                    chatBox.innerHTML = ''; // Clear chat box if active session deleted
                 }
-            });
+            }
         });
 
         // Chat functionality
@@ -228,6 +207,13 @@
             const message = userInput.value.trim();
             
             if (!message) return;
+
+            // Show loading symbol
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.innerHTML = '<p>Loading...</p>';
+            chatBox.appendChild(loadingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
             
             try {
                 const response = await fetch('/chat', {
@@ -241,7 +227,6 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    const chatBox = document.getElementById('chat-box');
                     const messageDiv = document.createElement('div');
                     messageDiv.className = 'chat-message mb-2';
                     messageDiv.innerHTML = `
@@ -253,12 +238,23 @@
                     chatBox.appendChild(messageDiv);
                     chatBox.scrollTop = chatBox.scrollHeight;
                     userInput.value = '';
+
+                    // Save message to active session
+                    const sessions = JSON.parse(localStorage.getItem('sessions')) || [];
+                    const activeSession = sessions.find(session => session.active);
+                    if (activeSession) {
+                        activeSession.messages.push({ user: message, bot: data.response });
+                        saveSessions(sessions);
+                    }
                 } else {
                     alert('Failed to send message.');
                 }
             } catch (error) {
                 console.error('Error sending message:', error);
                 alert('Error sending message.');
+            } finally {
+                // Remove loading symbol
+                loadingDiv.remove();
             }
         };
 
@@ -298,7 +294,7 @@
         // Clear all session data when the page is refreshed
         window.addEventListener('beforeunload', function(e) {
             localStorage.clear();
-            document.getElementById('chat-box').innerHTML = '';
+            chatBox.innerHTML = '';
             const sessionList = document.getElementById('session-list');
             if (sessionList) {
                 while (sessionList.firstChild) {
@@ -307,16 +303,9 @@
             }
         });
 
-        // Clear chat history on page load
+        // Load sessions on page load
         window.addEventListener('load', function() {
-            localStorage.clear();
-            document.getElementById('chat-box').innerHTML = '';
-            const sessionList = document.getElementById('session-list');
-            if (sessionList) {
-                while (sessionList.firstChild) {
-                    sessionList.removeChild(sessionList.firstChild);
-                }
-            }
+            loadSessions();
         });
     </script>
 </body>
