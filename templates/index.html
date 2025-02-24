@@ -68,8 +68,26 @@
                 </svg>
             </button>
         </div>
-        <div id="session-list" class="space-y-2">
+        <div id="session-list" class="space-y-2 mb-4">
             <!-- Sessions will be dynamically loaded here -->
+        </div>
+        <div class="bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-bold mb-4">Settings</h2>
+            <div class="space-y-4">
+                <div class="form-group">
+                    <label for="temperature" class="font-medium">Temperature:</label>
+                    <input type="number" id="temperature" step="0.1" value="{{ settings.temperature }}" 
+                           class="p-2 border rounded">
+                </div>
+                <div class="form-group">
+                    <label for="max-tokens" class="font-medium">Max Tokens:</label>
+                    <input type="number" id="max-tokens" value="{{ settings.max_tokens }}" 
+                           class="p-2 border rounded">
+                </div>
+                <button id="update-settings" class="w-full bg-green-500 text-white py-2 rounded">
+                    Update Settings
+                </button>
+            </div>
         </div>
     </aside>
 
@@ -92,25 +110,6 @@
         <div class="flex space-x-4 mb-6">
             <input type="text" id="user-input" class="flex-1 p-2 border rounded" placeholder="Type your message...">
             <button id="send-btn" class="bg-blue-500 text-white px-4 py-2 rounded">Send</button>
-        </div>
-
-        <div class="bg-white p-4 rounded shadow">
-            <h2 class="text-xl font-bold mb-4">Settings</h2>
-            <div class="space-y-4">
-                <div class="form-group">
-                    <label for="temperature" class="font-medium">Temperature:</label>
-                    <input type="number" id="temperature" step="0.1" value="{{ settings.temperature }}" 
-                           class="p-2 border rounded">
-                </div>
-                <div class="form-group">
-                    <label for="max-tokens" class="font-medium">Max Tokens:</label>
-                    <input type="number" id="max-tokens" value="{{ settings.max_tokens }}" 
-                           class="p-2 border rounded">
-                </div>
-                <button id="update-settings" class="w-full bg-green-500 text-white py-2 rounded">
-                    Update Settings
-                </button>
-            </div>
         </div>
     </main>
     
