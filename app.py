@@ -6,7 +6,7 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # Required for session management
 
 # Initialize the GenerativeModel
-API_KEY = "AIzaSyC8PKlS5Ippsf9QPdj7G6kG76D-RrxxaTA"
+API_KEY = "AIzaSyBk6Bo7Pr9BWr33o8B290A2WJhbBaUgnyM"
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-pro')
 
